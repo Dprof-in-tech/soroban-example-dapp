@@ -2,22 +2,35 @@ import React, { useEffect, useState } from 'react'
 import type { NextPage } from 'next'
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
-import { useSession, signIn } from 'next-auth/react'
+import { Campaign, Pledge } from '../components/organisms'
+import { WalletData } from '../components/molecules'
+import { useSession, signIn, signOut } from 'next-auth/react'
 import { useRouter } from 'next/router'
-import { FaGoogle, FaTwitter, FaGithub } from 'react-icons/fa'
 import * as StellarSdk from '@stellar/stellar-sdk'
 import CryptoJS from 'crypto-js'
 
-const Index: NextPage = () => {
+const Home: NextPage = () => {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [publicKey, setPublicKey] = useState<string | null>(null)
   const [secretKey, setSecretKey] = useState<string | null>(null)
   const [pincode, setPincode] = useState<string>('')
+  const [isKeyPairGenerated, setIsKeyPairGenerated] = useState<boolean>(false)
+
+  useEffect(() => {
+    if (status !== 'loading' && !session) {
+      router.push('/')
+    }
+  }, [session, status, router])
 
   useEffect(() => {
     if (status !== 'loading' && session) {
-      generateKeyPair()
+      const encryptedSecretKey = localStorage.getItem('encryptedSecretKey')
+      if (encryptedSecretKey) {
+        setIsKeyPairGenerated(true)
+      } else {
+        generateKeyPair()
+      }
     }
   }, [session, status])
 
@@ -36,22 +49,42 @@ const Index: NextPage = () => {
       const encryptedSecretKey = encryptSecretKey(secretKey, pincode)
       localStorage.setItem('encryptedSecretKey', encryptedSecretKey)
       alert('Key pair generated and secret key encrypted and stored locally.')
-      router.push('/home')
+      setIsKeyPairGenerated(true)
     }
+  }
+
+  if (status === 'loading') {
+    return <div>Loading...</div>
   }
 
   return (
     <>
       <Head>
-        <title>Soroban Social Login</title>
+        <title>
+          Crowdfund Template - An example of how to run a crowdfund campaign on
+          Soroban.
+        </title>
+        <meta
+          name="description"
+          content="An example of loading information from a stellar smart contract"
+        />
+        <link rel="icon" href="/favicon.ico" />
       </Head>
+
+      <header className={styles.header}>
+        <h3>Starfund</h3>
+        {session ? (
+          <>
+            Signed in as {session.user?.email || session.user?.name} <br />
+            <button onClick={() => signOut()}>Sign Out</button>
+          </>
+        ) : (
+          <div>Not signed in</div>
+        )}
+        <WalletData />
+      </header>
       <main className={styles.main}>
-        <div className={styles.login}>
-          <button onClick={() => signIn('google')}><FaGoogle /> Sign in with Google</button>
-          <button onClick={() => signIn('twitter')}><FaTwitter /> Sign in with Twitter</button>
-          <button onClick={() => signIn('github')}><FaGithub /> Sign in with GitHub</button>
-        </div>
-        {publicKey && secretKey && (
+        {session && !isKeyPairGenerated && publicKey && secretKey ? (
           <div className={styles.keyPair}>
             <h3>Your Key Pair</h3>
             <p>Public Key: {publicKey}</p>
@@ -66,10 +99,15 @@ const Index: NextPage = () => {
               <button onClick={handlePincodeSubmit}>Submit Pincode</button>
             </div>
           </div>
+        ) : (
+          <div className={styles.content}>
+            <Campaign />
+            <Pledge />
+          </div>
         )}
       </main>
     </>
   )
 }
 
-export default Index
+export default Home
