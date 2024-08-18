@@ -45,7 +45,7 @@ export function WalletData() {
     <>
       {account ? (
         <div className={styles.displayData}>
-          <div className={styles.card}>{account.slice(0, 15)}</div>
+          <div className={styles.card}>{account.slice(0, 12)}</div>
         </div>
       ) : (
         <ConnectButton label="Connect Wallet" />
