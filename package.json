@@ -34,6 +34,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-icons": "^5.2.1",
+    "stellar-sdk": "^12.2.0",
     "svelte-local-storage-store": "^0.6.4"
   },
   "devDependencies": {

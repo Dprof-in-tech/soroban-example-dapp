@@ -8,6 +8,7 @@ import { useSession, signIn, signOut } from 'next-auth/react'
 import { useRouter } from 'next/router'
 import * as StellarSdk from '@stellar/stellar-sdk'
 import CryptoJS from 'crypto-js'
+import Image from 'next/image'
 
 const Home: NextPage = () => {
   const { data: session, status } = useSession()
@@ -16,6 +17,11 @@ const Home: NextPage = () => {
   const [secretKey, setSecretKey] = useState<string | null>(null)
   const [pincode, setPincode] = useState<string>('')
   const [isKeyPairGenerated, setIsKeyPairGenerated] = useState<boolean>(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const toggleModal = () => {
+    setIsModalOpen(!isModalOpen)
+  }
 
   useEffect(() => {
     if (status !== 'loading' && !session) {
@@ -57,6 +63,11 @@ const Home: NextPage = () => {
     return <div>Loading...</div>
   }
 
+  const handleSignout = () => {
+    localStorage.clear();
+    signOut();
+  }
+
   return (
     <>
       <Head>
@@ -73,15 +84,44 @@ const Home: NextPage = () => {
 
       <header className={styles.header}>
         <h3>Starfund</h3>
-        {session ? (
-          <>
-            Signed in as {session.user?.email || session.user?.name} <br />
-            <button onClick={() => signOut()}>Sign Out</button>
-          </>
-        ) : (
-          <div>Not signed in</div>
-        )}
-        <WalletData />
+        <div className={styles.container}>
+          <WalletData />
+          {session ? (
+            <div className={styles.profileBar} onClick={toggleModal}>
+              <Image
+                src="/profile.png"
+                alt="Profile"
+                className={styles.profileImage}
+                onClick={toggleModal}
+                width={500}
+                height={500}
+              />
+              <Image src='/dropdown.svg' alt='click me' width={20} height={20} onClick={toggleModal} /> 
+
+              {isModalOpen && (
+                <div className={styles.modalContent}>
+                  <span className={styles.modalUserName}>
+                    {session.user?.email || session.user?.name}
+                  </span>
+                  <button
+                    onClick={handleSignout}
+                    className={styles.signOutButton}
+                  >
+                    Sign Out
+                  </button>
+                  <button
+                    onClick={toggleModal}
+                    className={styles.closeModalButton}
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>Not signed in</div>
+          )}
+        </div>
       </header>
       <main className={styles.main}>
         {session && !isKeyPairGenerated && publicKey && secretKey ? (
@@ -94,7 +134,7 @@ const Home: NextPage = () => {
                 type="password"
                 placeholder="Enter pincode to encrypt your secret key"
                 value={pincode}
-                onChange={(e) => setPincode(e.target.value)}
+                onChange={e => setPincode(e.target.value)}
               />
               <button onClick={handlePincodeSubmit}>Submit Pincode</button>
             </div>

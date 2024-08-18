@@ -31,12 +31,58 @@ const Index: NextPage = () => {
     return CryptoJS.AES.encrypt(key, pincode).toString()
   }
 
+  const createAccount = async () => {
+    try {
+      const response = await fetch(
+        `https://friendbot.stellar.org?addr=${encodeURIComponent(publicKey ?? '')}`
+      )
+      const responseJSON = await response.json()
+      console.log('SUCCESS! You have a new account :)\n', responseJSON)
+    } catch (e) {
+      console.error('ERROR!', e)
+    }
+
+    try {
+      const server = new StellarSdk.Horizon.Server('https://horizon-testnet.stellar.org')
+      const parentAccount = await server.loadAccount(publicKey ?? '') // Ensure the parent account exists on the ledger
+      const childAccount = StellarSdk.Keypair.random() // Generate a random account to create
+
+      // Create a transaction builder object
+      const transactionBuilder = new StellarSdk.TransactionBuilder(parentAccount, {
+        fee: StellarSdk.BASE_FEE,
+        networkPassphrase: StellarSdk.Networks.TESTNET,
+      })
+        .addOperation(
+          StellarSdk.Operation.createAccount({
+            destination: childAccount.publicKey(),
+            startingBalance: '5',
+          })
+        )
+        .setTimeout(180)
+
+      const builtTx = transactionBuilder.build() // Build the transaction
+
+      // Sign the transaction with the parent account's secret key
+      builtTx.sign(StellarSdk.Keypair.fromSecret(secretKey ?? ''))
+
+      // Submit the transaction
+      const txResponse = await server.submitTransaction(builtTx)
+      console.log('Transaction successful!', txResponse)
+      console.log('Created the new account', childAccount.publicKey())
+    } catch (e) {
+      console.error('ERROR during transaction submission!', e)
+    }
+  }
+
   const handlePincodeSubmit = () => {
     if (secretKey) {
       const encryptedSecretKey = encryptSecretKey(secretKey, pincode)
       localStorage.setItem('encryptedSecretKey', encryptedSecretKey)
+      createAccount();
       alert('Key pair generated and secret key encrypted and stored locally.')
       router.push('/home')
+    } else {
+      console.error('Secret key is not available')
     }
   }
 
@@ -47,9 +93,15 @@ const Index: NextPage = () => {
       </Head>
       <main className={styles.main}>
         <div className={styles.login}>
-          <button onClick={() => signIn('google')}><FaGoogle /> Sign in with Google</button>
-          <button onClick={() => signIn('twitter')}><FaTwitter /> Sign in with Twitter</button>
-          <button onClick={() => signIn('github')}><FaGithub /> Sign in with GitHub</button>
+          <button onClick={() => signIn('google')}>
+            <FaGoogle /> Sign in with Google
+          </button>
+          <button onClick={() => signIn('twitter')}>
+            <FaTwitter /> Sign in with Twitter
+          </button>
+          <button onClick={() => signIn('github')}>
+            <FaGithub /> Sign in with GitHub
+          </button>
         </div>
         {publicKey && secretKey && (
           <div className={styles.keyPair}>
